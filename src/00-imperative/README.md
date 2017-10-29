@@ -427,3 +427,62 @@ calls, changing the DOM of the web application. We need to separate pure logic o
 
 In our case it is simple. Do not hard code `console.log`, instead 
 pass the "side-effect" function as input parameter.
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+function multiplyAndPrint (cb) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  for (let k = 0; k < numbers.length; k += 1) {
+    cb(numbers[k] * constant)
+  }
+}
+module.exports = multiplyAndPrint
+```
+
+See how `multiplyAndPrint` suddenly became a *pure* function? It is not affecting any global 
+state and always produces the same result: calling passed callback function `cb` 3 times
+with numbers 6, 2 and 14. In fact I like writing my code in this fashion, but surround it
+with default "dirty" bits. For example if we load this file as a top level module, we
+probably want to print the numbers!
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+function multiplyAndPrint (cb) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  for (let k = 0; k < numbers.length; k += 1) {
+    cb(numbers[k] * constant)
+  }
+}
+module.exports = multiplyAndPrint
+if (!module.parent) {
+  multiplyAndPrint(console.log)
+}
+```
+```
+$ node .
+6
+2
+14
+```
+
+When we unit test this code, we do not want to pollute the console log either. Instead
+`sinon` can create a dummy spy callback function for us, which we can check and dispose
+automatically with memory garbage collection.
+
+```js
+/* eslint-env mocha */
+const sinon = require('sinon')
+const multiplyThenPrint = require('./index')
+it('produces numbers', () => {
+  const cb = sinon.spy()
+  multiplyThenPrint(cb)
+  console.assert(cb.calledWith(6), 'produced 6')
+  console.assert(cb.calledWith(2), 'produced 2')
+  console.assert(cb.calledWith(14), 'produced 14')
+})
+```
+
+Perfect, our tests are much simpler because we refactored our side effects and replaced 
+[mocking with passing input arguments](https://glebbahmutov.com/blog/mocking-vs-refactoring/).
