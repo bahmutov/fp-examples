@@ -550,3 +550,108 @@ of numbers and to call the `out` callback. The `[].map` call produces new list o
 numbers, which is great, it does not modify data, which is what we want. But the code
 looks a little weird, because we have small utility functions that deal on *each item*.
 Let us factor them out and give them descriptive readable names for clarity.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  const byConstant = x => x * constant
+  const callOut = x => out(x)
+  numbers.map(byConstant).forEach(callOut)
+}
+module.exports = multiplyAndPrint
+```
+
+Last line reads almost like natural English `numbers.map(byConstant).forEach(callOut)`
+but why do we need a separate `const callOut = x => out(x)` function? Well, because
+JavaScript defines `Array.forEach` to expect 3 arguments, not just the value, but
+a value, its index and the entire array. If we simply call `out`, we will get extra
+values
+
+```js
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  const byConstant = x => x * constant
+  numbers.map(byConstant).forEach(out)
+}
+```
+```
+$ node .
+6 0 [ 6, 2, 14 ]
+2 1 [ 6, 2, 14 ]
+14 2 [ 6, 2, 14 ]
+```
+
+Plus our unit test would fail, because the spy function would be called with 3 arguments,
+not a single one each time.
+
+By having an extra `x => out(x)` we are ignoring all arguments, but the first one.
+In a sense, we are converting function `out` into a "unary" function that only 
+expects a single argument.
+
+## Function reuse
+
+The above code has two little utility functions - one to multiply by a constant, and
+another to convert a function into a unary function. These actions are so common, we
+can and should write a library of reusable functional "bits".
+
+First, the multiplication by a constant. A typical multiplication function
+would be simply `const mul = (x, y) => x * y` but in our case we know the first 
+argument (the constant) very early. We know the second argument much later - only 
+during the iteration over the list we get to know the `y` argument so we can
+multiply. When the first argument is known waaaay before the second, we should
+
+* put the argument likely to be know first at the first position in the function signature
+* curry the function
+
+Read [Put callback first for elegance][put-callback-first] for more discussion of this.
+In our code, this means we will write multiplication to get first argument and return
+the function that expects the second argument, and then multiplies the two.
+
+[put-callback-first]: https://glebbahmutov.com/blog/put-callback-first-for-elegance/
+
+```js
+const mul = x => y => x * y
+[1, 2, 3].map(mul(10))
+// [10, 20, 30]
+```
+
+For clarity, we can name the intermediate function
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const mul = x => y => x * y
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  const byConstant = mul(constant)
+  const callOut = x => out(x)
+  numbers.map(byConstant).forEach(callOut)
+}
+```
+
+As far as second small function `callOut`, again, we will make a reusable utility
+that operates on an input function.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const mul = x => y => x * y
+const unary = fn => x => fn(x)
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  const byConstant = mul(constant)
+  const callOut = unary(out)
+  numbers.map(byConstant).forEach(callOut)
+}
+```
+
+Aside: this is a defining trait of a functional programmer in my opinion - changing 
+behavior of functions by "adapting" them and creating complex algorithms by composing
+many small primitive functions.
+
