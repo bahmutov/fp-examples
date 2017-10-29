@@ -10,9 +10,7 @@ const immutable = require('seamless-immutable')
 function multiplyAndPrint (out) {
   const numbers = immutable([3, 1, 7])
   const constant = 2
-  for (let k = 0; k < numbers.length; k += 1) {
-    out(numbers[k] * constant)
-  }
+  numbers.map(x => x * constant).forEach(x => out(x))
 }
 module.exports = multiplyAndPrint
 if (!module.parent) {

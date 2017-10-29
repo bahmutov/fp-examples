@@ -486,3 +486,67 @@ it('produces numbers', () => {
 
 Perfect, our tests are much simpler because we refactored our side effects and replaced 
 [mocking with passing input arguments](https://glebbahmutov.com/blog/mocking-vs-refactoring/).
+
+## The pure examples and return values
+
+Our function `multiplyAndPrint` is pure, even if calls a passed in impure callback function.
+It only operates on the inputs, so if `cb` is pure or note - that is unknown and beyond
+our function's control.
+
+```js
+function multiplyAndPrint (cb) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  for (let k = 0; k < numbers.length; k += 1) {
+    cb(numbers[k] * constant)
+  }
+}
+```
+
+Other pure functions usually return something, maybe depending on the arguments
+
+```jsx
+// a function that always returns `true` value
+const T = () => true
+// an identity function that always returns whatever value provided
+const I = (x) => x
+// a function that produces virtual dom node using React JSX helper
+const HelloWorld = ({name}) => {
+  return (
+    <div>Hello {name}<\/div>
+  )
+}
+// a function that produces virtual dom node using "virtual-dom" library
+const h = require('virtual-dom/h')
+const render = ({name}) =>
+  h('div', {}, [`Hello ${name}`])
+```
+
+Let the fact that `multiplyAndPrint` has no return value not bother you. It really uses
+the input argument `cb` to "return" produced values. It is just that instead of a single
+produced value it needs to return *multiple* values one by one.
+
+## Notes about imperative code
+
+Notice that while we made a pure function `multiplyAndPrint` we did NOT write the code inside
+using declarative style. Instead it is imperative loop iteration. The two aspects (`imperative`
+vs `declarative` and `pure` vs `side-effects`) are close, but separate. Functional programming
+style usually wants each function to be both `pure` and `declarative`. Here is how we can refactor
+our function to *declare* what the code does, but *not how to do it*.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  numbers.map(x => x * constant).forEach(x => out(x))
+}
+module.exports = multiplyAndPrint
+```
+
+We are using built-in methods from the JavaScript ES5 arrays to map over the list
+of numbers and to call the `out` callback. The `[].map` call produces new list of
+numbers, which is great, it does not modify data, which is what we want. But the code
+looks a little weird, because we have small utility functions that deal on *each item*.
+Let us factor them out and give them descriptive readable names for clarity.
