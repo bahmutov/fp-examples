@@ -27,6 +27,7 @@
     "standard": "^10.0.3"
   },
   "dependencies": {
+    "require-and-forget": "1.0.0",
     "seamless-immutable": "7.1.2"
   }
 }

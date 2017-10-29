@@ -197,5 +197,166 @@ mocha src/**/*spec.js
   1 passing (163ms)
 ```
 
+But JavaScript and Node lie to you, or at least do not tell you the complete story.
+Add another test that *does nothing*, like this
 
+```js
+/* eslint-env mocha */
+it('prints numbers', () => {
+  const sinon = require('sinon')
+  sinon.spy(console, 'log')
+  require('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+})
 
+it('does nothing', () => {
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+})
+```
+
+If you run these tests, the assertions in the second test pass!
+```
+mocha src/**/*spec.js
+
+6
+2
+14
+  ✓ prints numbers (178ms)
+  ✓ does nothing
+
+  2 passing (187ms)
+```
+
+The first test "polluted" the global shared environment. Not only it added spy methods
+to `console.log`, it did not even reset them after the first test. The spy methods, and
+the "dirty state" after the first test introduced an entanglement between the two tests.
+For example, we can not just run the second test by itself - it will crash.
+
+```js
+it.only('does nothing', () => {
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+})
+```
+```
+mocha src/**/*spec.js
+
+  1) does nothing
+
+  0 passing (11ms)
+  1 failing
+
+  1) does nothing:
+     TypeError: console.log.calledWith is not a function
+      at Context.it.only (spec.js:12:30)
+```
+
+If we cannot run any unit test in isolation, that means debugging and testing our code
+becomes a nightmare. Some of these interdependencies in the tests can be found by randomizing
+order of tests on every run, which test runner [rocha](https://github.com/bahmutov/rocha)
+does. 
+
+But even more subtle is the global state pollution that happens when we use statement 
+`require('./index.js')`. In Node environment, this command reads the source of the file 
+`./index.js` and *evaluates it* using JavaScript engine. Thus it executes all the statements
+in the program (creating a numbers list, iterating over it, multiplying and printing the
+result). Then Node `require` caches the evaluated result (which in this case is `undefined` value
+because the module does not export anything). Which means if we `require('./index.js')`
+again, Node will NOT evaluate the code, and will NOT print the numbers.
+
+```js
+const sinon = require('sinon')
+
+it('prints numbers', () => {
+  sinon.spy(console, 'log')
+  require('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+
+it('prints numbers again', () => {
+  sinon.spy(console, 'log')
+  require('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+```
+```
+mocha src/**/*spec.js
+
+6
+2
+14
+  ✓ prints numbers
+  1) prints numbers again
+  - does nothing
+
+  1 passing (25ms)
+  1 pending
+  1 failing
+
+  1) prints numbers again:
+
+      AssertionError: printed 6
+      + expected - actual
+
+      -false
+      +true
+      
+      at Console.assert (console.js:95:23)
+      at Context.it (src/00-imperative/spec.js:16:11)
+```
+
+Exactly the same code inside the test does two different things when we execute it.
+We cannot just read the source and understand what is going on anymore - because it
+will produce different results! So it is difficult to test it, because of Node caching.
+We can fix this particular case when testing by removing the module from the
+global require cache, for example by using 
+[require-and-forget](https://github.com/bahmutov/require-and-forget)
+
+```js
+const sinon = require('sinon')
+const forget = require('require-and-forget')
+
+it('prints numbers', () => {
+  sinon.spy(console, 'log')
+  forget('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+
+it('prints numbers again', () => {
+  sinon.spy(console, 'log')
+  forget('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+```
+Now we truly force re-evaluation and re-running of `index.js` code inside each test
+```
+mocha src/**/*spec.js
+
+6
+2
+14
+  ✓ prints numbers
+6
+2
+14
+  ✓ prints numbers again
+
+  2 passing (22ms)
+```
