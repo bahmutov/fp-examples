@@ -7,12 +7,11 @@
 //  14
 'use strict'
 const immutable = require('seamless-immutable')
-const mul = x => y => x * y
-const unary = fn => x => fn(x)
+const {multiply, unary} = require('ramda')
 function multiplyAndPrint (out) {
   const numbers = immutable([3, 1, 7])
   const constant = 2
-  const byConstant = mul(constant)
+  const byConstant = multiply(constant)
   const callOut = unary(out)
   numbers.map(byConstant).forEach(callOut)
 }

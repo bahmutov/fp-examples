@@ -655,3 +655,27 @@ Aside: this is a defining trait of a functional programmer in my opinion - chang
 behavior of functions by "adapting" them and creating complex algorithms by composing
 many small primitive functions.
 
+## Using libraries
+
+Notice, we just increased the amount of code in our solution. Yet the functions we have
+created `mul` and `unary` are so commonly needed, other developers have coded them again 
+and again. And even collected them into nice well-tested libraries like 
+[ramda](http://ramdajs.com/docs/), meaning we do not have to code *or test* a lot of code!
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const {multiply, unary} = require('ramda')
+function multiplyAndPrint (out) {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  const byConstant = multiply(constant)
+  const callOut = unary(out)
+  numbers.map(byConstant).forEach(callOut)
+}
+module.exports = multiplyAndPrint
+```
+
+Notice that by using `Ramda` I skip testing *so much code*, because I am reusing a lot of
+the code battle-tested by thousands of people.
+
