@@ -7,8 +7,11 @@
 //  14
 'use strict'
 const immutable = require('seamless-immutable')
-const numbers = immutable([3, 1, 7])
-const constant = 2
-for (let k = 0; k < numbers.length; k += 1) {
-  console.log(numbers[k] * constant)
+function multiplyAndPrint () {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  for (let k = 0; k < numbers.length; k += 1) {
+    console.log(numbers[k] * constant)
+  }
 }
+module.exports = multiplyAndPrint

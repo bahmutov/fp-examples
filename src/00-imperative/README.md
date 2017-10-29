@@ -360,3 +360,70 @@ mocha src/**/*spec.js
 
   2 passing (22ms)
 ```
+
+Still, the testing is difficult because loading the code definition should NOT mean running it!
+It is easy to fix this though, just define a function and export it without calling it. Let
+the test or user code run it.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+function multiplyAndPrint () {
+  const numbers = immutable([3, 1, 7])
+  const constant = 2
+  for (let k = 0; k < numbers.length; k += 1) {
+    console.log(numbers[k] * constant)
+  }
+}
+module.exports = multiplyAndPrint
+```
+Our test now can explicitly call the function before checking the console log.
+```js
+/* eslint-env mocha */
+const sinon = require('sinon')
+const multiplyThenPrint = require('./index')
+it('prints numbers', () => {
+  sinon.spy(console, 'log')
+  multiplyThenPrint()
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+it('prints numbers again', () => {
+  sinon.spy(console, 'log')
+  multiplyThenPrint()
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+  console.log.restore()
+})
+```
+```
+mocha src/**/*spec.js
+
+6
+2
+14
+  ✓ prints numbers
+6
+2
+14
+  ✓ prints numbers again
+
+  2 passing (19ms)
+```
+
+## Fighting side effects
+
+Yet we still have a side effect in our code - printing to the console log. While we can
+read the code and understand what it does, we still cannot tell what the entire effect of
+it will do. Because to the user the output of running this code 1 time will be just 3 numbers
+printed (6, 2 and 14). But if the code is running several times, then the entire screen will
+be covered in these numbers. Printing to the console is the *side-effect* that makes code
+hard to predict and use. Other common side-effects are writing to the database, making network
+calls, changing the DOM of the web application. We need to separate pure logic of our code
+(multiplying list of numbers) from the code producing side effects.
+
+In our case it is simple. Do not hard code `console.log`, instead 
+pass the "side-effect" function as input parameter.
