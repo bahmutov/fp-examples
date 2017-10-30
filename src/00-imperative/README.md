@@ -827,5 +827,51 @@ exports["works in different situations multiplyBy 1"] = {
 ```
 Snapshot testing makes unit testing a pure function a breeze.
 
+## Pure main
+
+Our main function is producing side effects. Is there anything we can do to make it
+pure, to *clean it up*?
+
+```js
+function main () {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  multiplyBy(constant, numbers).forEach(unary(console.log))
+}
+```
+
+Turns out, we can. We already pushed the side effect (printing to the console) once
+out from `multiplyBy`, and we can do this trick again. Only we will combine it with
+another, more subtle trick. Notice that `main` is producing the side effect only
+because it *executes console.log*. If `main` somehow only "told" someone to execute
+`console.log(...)` then `main` would be pure, and that someone would be "dirty" instead.
+
+The simplest case is for `main` to return a "dirty" function.
+
+```js
+function main () {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  return function dirty () {
+    multiplyBy(constant, numbers).forEach(unary(console.log))
+  }
+}
+module.exports = {multiplyBy, main}
+if (!module.parent) {
+  main()()
+}
+```
+
+Look at this weird `main`. It still schedules the side effects logic, but 
+**does not execute it**. Instead it returns a new function ingenuously named `dirty`.
+The `main` is pure, and we can predict what it will do by reading its source code, 
+even if we run `main` a million times. It will return an instance of `dirty` function
+a million times! The actual side effect only happens when this block runs
+
+```js
+if (!module.parent) {
+  main()()
+}
+```
 
 

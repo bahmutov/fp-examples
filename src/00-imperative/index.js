@@ -15,9 +15,11 @@ function multiplyBy (constant, numbers) {
 function main () {
   const constant = 2
   const numbers = immutable([3, 1, 7])
-  multiplyBy(constant, numbers).forEach(unary(console.log))
+  return function dirty () {
+    multiplyBy(constant, numbers).forEach(unary(console.log))
+  }
 }
 module.exports = {multiplyBy, main}
 if (!module.parent) {
-  main()
+  main()()
 }
