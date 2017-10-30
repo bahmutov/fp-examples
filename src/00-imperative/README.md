@@ -115,7 +115,7 @@ for (let k = 0; k < numbers.length; k += 1) {
 }
 ```
 
-But of course JavaScript lies about it. 
+But of course JavaScript lies about it.
 
 ```js
 const numbers = [3, 1, 7]
@@ -169,7 +169,7 @@ numbers[0] = 100
 
 How can we test this code? We cannot get into the `for` loop, and the only way to test it is
 to intercept the *side effects* - the printing to the console object. We can write a unit
-test to spy on `console.log` using [sinon](http://sinonjs.org/) with 
+test to spy on `console.log` using [sinon](http://sinonjs.org/) with
 cmo[mocha](https://mochajs.org/) test runner
 
 ```js
@@ -259,10 +259,10 @@ mocha src/**/*spec.js
 If we cannot run any unit test in isolation, that means debugging and testing our code
 becomes a nightmare. Some of these interdependencies in the tests can be found by randomizing
 order of tests on every run, which test runner [rocha](https://github.com/bahmutov/rocha)
-does. 
+does.
 
-But even more subtle is the global state pollution that happens when we use statement 
-`require('./index.js')`. In Node environment, this command reads the source of the file 
+But even more subtle is the global state pollution that happens when we use statement
+`require('./index.js')`. In Node environment, this command reads the source of the file
 `./index.js` and *evaluates it* using JavaScript engine. Thus it executes all the statements
 in the program (creating a numbers list, iterating over it, multiplying and printing the
 result). Then Node `require` caches the evaluated result (which in this case is `undefined` value
@@ -311,7 +311,7 @@ mocha src/**/*spec.js
 
       -false
       +true
-      
+
       at Console.assert (console.js:95:23)
       at Context.it (src/00-imperative/spec.js:16:11)
 ```
@@ -320,7 +320,7 @@ Exactly the same code inside the test does two different things when we execute 
 We cannot just read the source and understand what is going on anymore - because it
 will produce different results! So it is difficult to test it, because of Node caching.
 We can fix this particular case when testing by removing the module from the
-global require cache, for example by using 
+global require cache, for example by using
 [require-and-forget](https://github.com/bahmutov/require-and-forget)
 
 ```js
@@ -425,7 +425,7 @@ hard to predict and use. Other common side-effects are writing to the database, 
 calls, changing the DOM of the web application. We need to separate pure logic of our code
 (multiplying list of numbers) from the code producing side effects.
 
-In our case it is simple. Do not hard code `console.log`, instead 
+In our case it is simple. Do not hard code `console.log`, instead
 pass the "side-effect" function as input parameter.
 ```js
 'use strict'
@@ -440,7 +440,7 @@ function multiplyAndPrint (cb) {
 module.exports = multiplyAndPrint
 ```
 
-See how `multiplyAndPrint` suddenly became a *pure* function? It is not affecting any global 
+See how `multiplyAndPrint` suddenly became a *pure* function? It is not affecting any global
 state and always produces the same result: calling passed callback function `cb` 3 times
 with numbers 6, 2 and 14. In fact I like writing my code in this fashion, but surround it
 with default "dirty" bits. For example if we load this file as a top level module, we
@@ -484,7 +484,7 @@ it('produces numbers', () => {
 })
 ```
 
-Perfect, our tests are much simpler because we refactored our side effects and replaced 
+Perfect, our tests are much simpler because we refactored our side effects and replaced
 [mocking with passing input arguments](https://glebbahmutov.com/blog/mocking-vs-refactoring/).
 
 ## The pure examples and return values
@@ -513,7 +513,7 @@ const I = (x) => x
 // a function that produces virtual dom node using React JSX helper
 const HelloWorld = ({name}) => {
   return (
-    <div>Hello {name}<\/div>
+    <div>Hello {name}</div>
   )
 }
 // a function that produces virtual dom node using "virtual-dom" library
@@ -589,7 +589,7 @@ Plus our unit test would fail, because the spy function would be called with 3 a
 not a single one each time.
 
 By having an extra `x => out(x)` we are ignoring all arguments, but the first one.
-In a sense, we are converting function `out` into a "unary" function that only 
+In a sense, we are converting function `out` into a "unary" function that only
 expects a single argument.
 
 ## Function reuse
@@ -599,8 +599,8 @@ another to convert a function into a unary function. These actions are so common
 can and should write a library of reusable functional "bits".
 
 First, the multiplication by a constant. A typical multiplication function
-would be simply `const mul = (x, y) => x * y` but in our case we know the first 
-argument (the constant) very early. We know the second argument much later - only 
+would be simply `const mul = (x, y) => x * y` but in our case we know the first
+argument (the constant) very early. We know the second argument much later - only
 during the iteration over the list we get to know the `y` argument so we can
 multiply. When the first argument is known waaaay before the second, we should
 
@@ -651,15 +651,15 @@ function multiplyAndPrint (out) {
 }
 ```
 
-Aside: this is a defining trait of a functional programmer in my opinion - changing 
+Aside: this is a defining trait of a functional programmer in my opinion - changing
 behavior of functions by "adapting" them and creating complex algorithms by composing
 many small primitive functions.
 
 ## Using libraries
 
 Notice, we just increased the amount of code in our solution. Yet the functions we have
-created `mul` and `unary` are so commonly needed, other developers have coded them again 
-and again. And even collected them into nice well-tested libraries like 
+created `mul` and `unary` are so commonly needed, other developers have coded them again
+and again. And even collected them into nice well-tested libraries like
 [ramda](http://ramdajs.com/docs/), meaning we do not have to code *or test* a lot of code!
 
 ```js
@@ -720,7 +720,7 @@ if (!module.parent) {
 }
 ```
 
-Next, let us return the processed array, so that the outside caller 
+Next, let us return the processed array, so that the outside caller
 attaches the "dirty" side-effect. We probably should rename `multiplyAndPrint` to
 simply `multiplyBy` because it no longer prints.
 
@@ -740,7 +740,7 @@ if (!module.parent) {
 }
 ```
 
-We literally have two functions (well, one function and one code block). 
+We literally have two functions (well, one function and one code block).
 Function `multiplyBy` has main data processing logic and is pure. The code block below
 is setting up the data flow and also handles side effects.
 
@@ -774,7 +774,7 @@ if (!module.parent) {
 }
 ```
 
-Because we still export `multiplyBy` is so easy to unit test it. 
+Because we still export `multiplyBy` is so easy to unit test it.
 ```js
 /* eslint-env mocha */
 const {equals} = require('ramda')
@@ -784,7 +784,7 @@ it('produces numbers', () => {
   console.assert(equals(result, [6, 2, 14]))
 })
 ```
-We can even test it with many, many inputs using 
+We can even test it with many, many inputs using
 [data driven testing](https://github.com/bahmutov/snap-shot-it/#data-driven-testing).
 I am not even going to compute by hand the expected values, but will just check if
 produces snapshot after running the test once.
@@ -862,9 +862,9 @@ if (!module.parent) {
 }
 ```
 
-Look at this weird `main`. It still schedules the side effects logic, but 
+Look at this weird `main`. It still schedules the side effects logic, but
 **does not execute it**. Instead it returns a new function ingenuously named `dirty`.
-The `main` is pure, and we can predict what it will do by reading its source code, 
+The `main` is pure, and we can predict what it will do by reading its source code,
 even if we run `main` a million times. It will return an instance of `dirty` function
 a million times! The actual side effect only happens when this block runs
 
@@ -874,4 +874,45 @@ if (!module.parent) {
 }
 ```
 
+If we often print to the console (and I think we do!), we could even abstract
+it a little bit, and pass the `console.log` into `main`, just like we did
+before, when we were making `multiplyBy` a pure function.
 
+```js
+function main (print) {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  return function dirty () {
+    multiplyBy(constant, numbers).forEach(print)
+  }
+}
+module.exports = {multiplyBy, main}
+if (!module.parent) {
+  main(unary(console.log))()
+}
+```
+We are passing printing to the console as an argument to the `main` function,
+but notice we only *call it from the returned function*. Thus the side
+effect of calling `console.log` is "contained" and does not "spot" the `main`
+function itself. Pretty neat, right?
+
+## Beyond console log
+
+Printing to the console is the simplest case we could think of. But other
+side effects (like asynchronous operations, input and output) can also be
+performed from the returned function by scheduling "dirty actions" rather
+than kicking them off inside the `main` function.
+See [Is framework pure or not?](https://glebbahmutov.com/blog/is-framework-pure-or-not/)
+blog post for example.
+
+## Async data
+
+In realistic cases, the input data is not hard coded in our code. Instead
+we probably ask user or a server for it. Not only that, we probably do not
+get the entire list of numbers to process, but rather one number at a time,
+and more numbers can arrive in the future. Thus we cannot just pass an array
+of numbers as an input to and output from our function `multiplyBy`.
+Instead we should pass a more powerful data structure. Something that can
+deal with asynchronously arriving infinite lists. Luckily, this structure
+exists and is quite popular in the JavaScript world today: it is an
+Observable.
