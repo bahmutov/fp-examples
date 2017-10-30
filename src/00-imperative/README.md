@@ -970,3 +970,81 @@ notation. But what about event streams? Turns out it is more complicated
 Replace method call `.forEach(print)` with `.map(print)`. It should still print,
 right? After all, `[1, 2, 3].map(console.log)` prints!
 
+```js
+// rest of the code stays the same
+// instead of
+// multiplyBy(constant, numberPerSecond).forEach(print)
+// just have .map
+multiplyBy(constant, numberPerSecond).map(print)
+```
+
+Run the program and ... nothing happens. No numbers, nothing. The program
+just exits without any output. What is going on? Turns out the Observables
+we have created are "cold" or "off" by default. They are ready to go, all connected
+into a pipeline - but the data is not flowing yet. In order to start the events
+flowing through the observable steps, one must call `subscribe`.
+
+```js
+Rx.Observable.of(3, 1, 7)
+  .subscribe(console.log, console.error, () => console.log('done'))
+// 3
+// 1
+// 7
+// done
+```
+
+When calling subscribe, we provided three callback functions: on event,
+on error and on stream completed. What's interesting, if we subscribe
+several times, then the stream will execute several times.
+
+```js
+const numbers = Rx.Observable.of(3, 1, 7)
+numbers.subscribe(console.log, console.error, () => console.log('done'))
+numbers.subscribe(console.log, console.error, () => console.log('done'))
+// 3
+// 1
+// 7
+// done
+// 3
+// 1
+// 7
+// done
+```
+
+Even more, *all steps* of the pipeline execute for each subscription.
+We can see this by logging messages in the intermediate steps.
+
+```js
+// r.js
+const Rx = require('rxjs/Rx')
+const {tap} = require('ramda')
+const numbers = Rx.Observable.of(3, 1, 7).map(tap(x => console.log('passing', x)))
+numbers.subscribe(console.log, console.error, () => console.log('done'))
+numbers.subscribe(console.log, console.error, () => console.log('done'))
+```
+```
+$ node ./r.js
+passing 3
+3
+passing 1
+1
+passing 7
+7
+done
+passing 3
+3
+passing 1
+1
+passing 7
+7
+done
+```
+
+In our original `main` program, we had a single subscription - `Observable.forEach`
+internally calls method `Observable.subscribe`. Even timer interval only starts
+generating 1 second increments when we are subscribing, otherwise it is dormant.
+
+In a sense, observables are like function declarations, and subscribing to a cold
+observable is like executing the function. We can execute same function multiple
+times and we can "flow" the observable N times by subscribing to it also N times.
+

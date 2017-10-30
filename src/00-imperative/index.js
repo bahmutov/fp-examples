@@ -22,7 +22,7 @@ function main (print) {
       seconds,
       (number, seconds) => number
     )
-    multiplyBy(constant, numberPerSecond).forEach(print)
+    multiplyBy(constant, numberPerSecond).map(print)
   }
 }
 module.exports = { multiplyBy, main }
