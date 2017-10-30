@@ -1048,3 +1048,43 @@ In a sense, observables are like function declarations, and subscribing to a col
 observable is like executing the function. We can execute same function multiple
 times and we can "flow" the observable N times by subscribing to it also N times.
 
+## Pure pipeline
+
+This brings us to the last refactoring. If data does not flow through the
+pipeline we have built until someone calls `.subscribe()`, then our `main`
+can just return a cold Observable. Outside application code can then
+`.subscribe()` to this observable, kicking off the flow of events and
+triggering the side effects.
+
+```js
+function main (print) {
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const numberPerSecond = Rx.Observable.zip(
+    numbers,
+    seconds,
+    (number, seconds) => number
+  )
+  return multiplyBy(constant, numberPerSecond).map(print)
+}
+```
+
+See how `main` instead of returning a function, deferring execution of
+side effects simply builds and returns an Observable? It is also carefully
+avoids triggering "hidden" `.subscribe()` inside `.forEach()` by
+replacing it with `.map()` call.
+
+So far so good, `main` is still a pure function. What about the code
+block triggering the execution? It is almost as simple as before.
+
+```js
+if (!module.parent) {
+  main(unary(console.log)).subscribe()
+}
+```
+
+The "app bootstrap" code block does two important things
+
+- it passes a way to perform side-effect into the `main` function
+- it kicks off the flow of data through the pipeline returned by `main`
