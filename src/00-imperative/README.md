@@ -962,3 +962,11 @@ function main (print) {
   }
 }
 ```
+What is making the function `dirty` impure? When does the side effect actually
+happen? We know when the function is executed - when it is called using `fn()`
+notation. But what about event streams? Turns out it is more complicated
+(and at the same time strangely similar to functions).
+
+Replace method call `.forEach(print)` with `.map(print)`. It should still print,
+right? After all, `[1, 2, 3].map(console.log)` prints!
+
