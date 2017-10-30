@@ -8,14 +8,16 @@
 'use strict'
 const immutable = require('seamless-immutable')
 const {multiply, unary} = require('ramda')
-function multiplyAndPrint (constant, numbers, out) {
+function multiplyBy (constant, numbers) {
   const byConstant = multiply(constant)
-  const callOut = unary(out)
-  numbers.map(byConstant).forEach(callOut)
+  return numbers.map(byConstant)
 }
-module.exports = multiplyAndPrint
-if (!module.parent) {
+function main () {
   const constant = 2
   const numbers = immutable([3, 1, 7])
-  multiplyAndPrint(constant, numbers, console.log)
+  multiplyBy(constant, numbers).forEach(unary(console.log))
+}
+module.exports = {multiplyBy, main}
+if (!module.parent) {
+  main()
 }

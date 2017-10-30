@@ -720,9 +720,112 @@ if (!module.parent) {
 }
 ```
 
-Not only that, we can even return the processed array, and let the
-outside "application" block schedule the "dirty" side-effect.
+Next, let us return the processed array, so that the outside caller 
+attaches the "dirty" side-effect. We probably should rename `multiplyAndPrint` to
+simply `multiplyBy` because it no longer prints.
 
 ```js
+'use strict'
+const immutable = require('seamless-immutable')
+const {multiply, unary} = require('ramda')
+function multiplyBy (constant, numbers) {
+  const byConstant = multiply(constant)
+  return numbers.map(byConstant)
+}
+module.exports = multiplyBy
+if (!module.parent) {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  multiplyBy(constant, numbers).forEach(unary(console.log))
+}
 ```
+
+We literally have two functions (well, one function and one code block). 
+Function `multiplyBy` has main data processing logic and is pure. The code block below
+is setting up the data flow and also handles side effects.
+
+```js
+if (!module.parent) {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  multiplyBy(constant, numbers).forEach(unary(console.log))
+}
+```
+
+The above code block is like the `main` function often found in different programming
+languages that starts the execution. Let us make this function explicit.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const {multiply, unary} = require('ramda')
+function multiplyBy (constant, numbers) {
+  const byConstant = multiply(constant)
+  return numbers.map(byConstant)
+}
+function main () {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  multiplyBy(constant, numbers).forEach(unary(console.log))
+}
+module.exports = {multiplyBy, main}
+if (!module.parent) {
+  main()
+}
+```
+
+Because we still export `multiplyBy` is so easy to unit test it. 
+```js
+/* eslint-env mocha */
+const {equals} = require('ramda')
+const {multiplyBy} = require('./index')
+it('produces numbers', () => {
+  const result = multiplyBy(2, [3, 1, 7])
+  console.assert(equals(result, [6, 2, 14]))
+})
+```
+We can even test it with many, many inputs using 
+[data driven testing](https://github.com/bahmutov/snap-shot-it/#data-driven-testing).
+I am not even going to compute by hand the expected values, but will just check if
+produces snapshot after running the test once.
+
+```js
+const {multiplyBy} = require('./index')
+const snapshot = require('snap-shot-it')
+it('works in different situations', () => {
+  snapshot(multiplyBy,
+    [2, []], // empty list numbers
+    [10, [1]], // single number
+    [2, [3, 1, 7]], // our example test case
+    [-1, [0, 1, 2, 3]] // negative constant
+  )
+})
+```
+This produces the snapshot file with inputs - outputs pairs
+```js
+exports["works in different situations multiplyBy 1"] = {
+  name: "multiplyBy",
+  behavior: [
+    {
+      given: [2, []],
+      expect: []
+    },
+    {
+      given: [10, [1]],
+      expect: [10]
+    },
+    {
+      given: [2, [3, 1, 7]],
+      expect: [6, 2, 14]
+    },
+    {
+      given: [-1, [0, 1, 2, 3]],
+      expect: [0, -1, -2, -3]
+    }
+  ]
+};
+```
+Snapshot testing makes unit testing a pure function a breeze.
+
+
 
