@@ -30,6 +30,7 @@
   "dependencies": {
     "ramda": "0.25.0",
     "require-and-forget": "1.0.0",
+    "rxjs": "5.5.2",
     "seamless-immutable": "7.1.2"
   }
 }
