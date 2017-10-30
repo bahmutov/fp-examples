@@ -679,3 +679,50 @@ module.exports = multiplyAndPrint
 Notice that by using `Ramda` I skip testing *so much code*, because I am reusing a lot of
 the code battle-tested by thousands of people.
 
+## Input to output
+
+Our example is very artificial, because the input array is hard coded. Usually the
+input numbers are passed from the outside.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const {multiply, unary} = require('ramda')
+function multiplyAndPrint (numbers, out) {
+  const constant = 2
+  const byConstant = multiply(constant)
+  const callOut = unary(out)
+  numbers.map(byConstant).forEach(callOut)
+}
+module.exports = multiplyAndPrint
+if (!module.parent) {
+  const numbers = immutable([3, 1, 7])
+  multiplyAndPrint(numbers, console.log)
+}
+```
+
+We can even move the constant to be an argument too.
+
+```js
+'use strict'
+const immutable = require('seamless-immutable')
+const {multiply, unary} = require('ramda')
+function multiplyAndPrint (constant, numbers, out) {
+  const byConstant = multiply(constant)
+  const callOut = unary(out)
+  numbers.map(byConstant).forEach(callOut)
+}
+module.exports = multiplyAndPrint
+if (!module.parent) {
+  const constant = 2
+  const numbers = immutable([3, 1, 7])
+  multiplyAndPrint(constant, numbers, console.log)
+}
+```
+
+Not only that, we can even return the processed array, and let the
+outside "application" block schedule the "dirty" side-effect.
+
+```js
+```
+
