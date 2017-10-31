@@ -1088,3 +1088,79 @@ The "app bootstrap" code block does two important things
 
 - it passes a way to perform side-effect into the `main` function
 - it kicks off the flow of data through the pipeline returned by `main`
+
+## If you want to do dirty things, just send them out
+
+The `main` still has one limitation and one weird thing about it
+
+```js
+function main (print) {
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const numberPerSecond = Rx.Observable.zip(
+    numbers,
+    seconds,
+    (number, seconds) => number
+  )
+  return multiplyBy(constant, numberPerSecond).map(print)
+}
+```
+
+1. Passing every method to call to do side effect as an argument to `main` will quickly grow old. Maybe instead we could come up with a way for `main` to "signal" whenever it wants to do a side effect?
+2. Using `.map(print)` to do a side effect without triggering `Observable.subscribe()` and the data flow is weird and non-intuitive.
+
+We can solve both problems by switching the things around. Instead of passing `print` as an input argument to `main` we can return an *Observable of print events*! Yes, we can! Isn't this beautiful - our data flow of events can be used to flow "side effect events" out of our beautiful, pure `main` and into the outside "dirty" world. Almost like a body digesting food and ... well, let's not go there.
+
+Since we already returning a stream, let us keep doing that. The "application" code block that bootstraps our `main` will know that the output is a stream of numbers to print to the console. Thus it will no longer even pass `print` into the `main`.
+
+```js
+function main () {
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const numberPerSecond = Rx.Observable.zip(
+    numbers,
+    seconds,
+    (number, seconds) => number
+  )
+  return multiplyBy(constant, numberPerSecond)
+}
+module.exports = { multiplyBy, main }
+if (!module.parent) {
+  const app = main() // nothing is executing yet
+  app.subscribe(console.log) // GO!
+}
+```
+
+See how we created a small pipeline inside `main`, returned it, stored it in the variable `app` and then started flowing data through it by calling `app.subscribe()`? Beautiful, isn't it? One of the strongest points about this code is that `main` is as testable as `multiplyBy` function. We kind of ignored unit testing for a little while, it is time to come back to testing again. Using `done` callback we can use asynchronous Mocha test to accumulate numbers and then compare them against the expected result.
+
+```js
+it('returns stream of multiplied numbers', function (done) {
+  this.timeout(2500)
+  const app = main()
+  const numbers = []
+  app.subscribe(x => numbers.push(x), null, () => {
+    console.assert(equals(numbers, [6, 2, 14]))
+    done()
+  })
+})
+```
+
+Simple, isn't it? Of course testing becomes more complex when you want to confirm timing of events, but the main point still stands. Our `main` function is pure - the test can control the input (if there were any), and receives the output stream, which it can inspect when it completes.
+
+We can even play tricks and for example only consider the first number in the stream, or the second by skipping and taking N numbers. Then the test becomes even simpler:
+
+```js
+it('tests first number', function(done) {
+  const app = main()
+  app.take(1).subscribe(x => console.assert(x === 2), null, done)
+})
+it('tests second number', function(done) {
+  const app = main()
+  app
+    .skip(1)
+    .take(1)
+    .subscribe(x => console.assert(x === 2), null, done)
+})
+```
