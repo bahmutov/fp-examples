@@ -12,15 +12,26 @@ function multiplyBy (constant, numbers) {
   const byConstant = multiply(constant)
   return numbers.map(byConstant)
 }
-function main (constant, numbers, control) {
-  const nums = Rx.Observable.zip(numbers, control, (number, _) => number)
-  return multiplyBy(constant, nums)
+function main (constant, numbers) {
+  return multiplyBy(constant, numbers)
 }
 module.exports = { multiplyBy, main }
+function getKeys () {
+  const readline = require('readline')
+  readline.emitKeypressEvents(process.stdin)
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+  }
+  const key$ = Rx.Observable.fromEvent(process.stdin, 'keypress')
+  const enter$ = key$.filter(s => s === '\r')
+  return key$.takeUntil(enter$)
+}
 if (!module.parent) {
   const constant = 2
-  const numbers = Rx.Observable.of(3, 1, 7)
-  const seconds = Rx.Observable.timer(0, 1000)
-  const app = main(constant, numbers, seconds) // nothing is executing yet
-  app.subscribe(console.log) // GO!
+  const key$ = getKeys()
+  const app = main(constant, key$.map(Number).do(console.log))
+  app.subscribe(console.log, console.error, _ => {
+    console.log('done with keys')
+    process.exit(0)
+  })
 }

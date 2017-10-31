@@ -1167,4 +1167,53 @@ it('tests second number', function(done) {
 
 ## Passing inputs
 
-Hardcoding the timer stream inside `main` seems a little limiting. Why should we always want our numbers multiplied a number once per second? Let us send it into `main` as a "control" stream. And while we are it, we can send the numbers stream and the constant - all inputs. The result is still the same - it pints a number multiplied by a constant at 1fps. But now we have a lot more power, because instead of a timer, for example, we could, I don't know ... like send an event every time user clicked a space key for example.
+Hardcoding the timer stream inside `main` seems a little limiting. Why should we always want our numbers multiplied a number once per second? Let us send it into `main` as a "control" stream. And while we are it, we can send the numbers stream and the constant - all inputs. The result is still the same - it pints a number multiplied by a constant at 1fps. But now we have a lot more power, because instead of a timer, for example, we could, I don't know ... like send numbers entered by the user from the command line.
+
+Reading numbers until the user presses a magic key like "Enter" using Rx
+looks like this.
+
+```js
+function getKeys () {
+  const readline = require('readline')
+  readline.emitKeypressEvents(process.stdin)
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+  }
+  const key$ = Rx.Observable.fromEvent(process.stdin, 'keypress')
+  const enter$ = key$.filter(s => s === '\r')
+  return key$.takeUntil(enter$)
+}
+// to use
+// const key$ = getKeys()
+// key$.subscribe(...)
+```
+
+There is common convention to name Observables using `$` character at the end, sort of like plural `S`. That is why we have variables `key$` and `enter$` for the stream of all key presses and the stream of just "Enter" key presses.
+
+We create a stream of key presses from `process.stdin` using `readline` and `Rx.Observable.fromEvent` utility method. We process events until the first `enter$` event happens. When it happens the stream completes and we close the program.
+
+```js
+if (!module.parent) {
+  const constant = 2
+  const key$ = getKeys()
+  const app = main(constant, key$.map(Number).do(console.log))
+  app.subscribe(console.log, console.error, _ => {
+    console.log('done with keys')
+    process.exit(0)
+  })
+}
+```
+We get the input (side effect!) outside the `main`, pass the stream into the `main`, and get the returned stream to print. Then we subscribe to the returned stream, kicking off our application. The input stream of key presses completes when the user presses "Enter" key, halting all attached streams, triggering `process.exit(0)`. I convert key presses to Numbers and print them while passing (statement `key$.map(Number).do(console.log)`). When running odd lines are the original numbers and the even lines are the multiplied ones.
+
+```
+$ node .
+2
+4
+3
+6
+done with keys
+```
+
+Pretty sweet, isn't it? We completely isolated the pure logic of the program from its inputs and outputs by passing around Observables.
+
+## Connection to the web world
