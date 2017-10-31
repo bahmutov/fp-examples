@@ -1154,7 +1154,7 @@ We can even play tricks and for example only consider the first number in the st
 ```js
 it('tests first number', function(done) {
   const app = main()
-  app.take(1).subscribe(x => console.assert(x === 2), null, done)
+  app.take(1).subscribe(x => console.assert(x === 6), null, done)
 })
 it('tests second number', function(done) {
   const app = main()
@@ -1167,4 +1167,4 @@ it('tests second number', function(done) {
 
 ## Passing inputs
 
-Hardcoding the timer stream inside `main` seems a little limiting. Why should we always want our numbers multiplied a number once per second? Let us send it into `main` as a "control" stream. And while we are it, we can send the numbers stream and the constant - all inputs.
+Hardcoding the timer stream inside `main` seems a little limiting. Why should we always want our numbers multiplied a number once per second? Let us send it into `main` as a "control" stream. And while we are it, we can send the numbers stream and the constant - all inputs. The result is still the same - it pints a number multiplied by a constant at 1fps. But now we have a lot more power, because instead of a timer, for example, we could, I don't know ... like send an event every time user clicked a space key for example.

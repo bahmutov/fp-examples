@@ -1,4 +1,5 @@
 /* eslint-env mocha */
+const Rx = require('rxjs/Rx')
 const { equals } = require('ramda')
 const { multiplyBy, main } = require('./index')
 const snapshot = require('snap-shot-it')
@@ -15,21 +16,30 @@ it('works in different situations', () => {
     [-1, [0, 1, 2, 3]] // negative constant
   )
 })
-it('returns stream of multiplied numbers', function(done) {
+it('returns stream of multiplied numbers', function (done) {
   this.timeout(2500)
-  const app = main()
-  const numbers = []
-  app.subscribe(x => numbers.push(x), null, () => {
-    console.assert(equals(numbers, [6, 2, 14]))
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const app = main(constant, numbers, seconds)
+  const output = []
+  app.subscribe(x => output.push(x), null, () => {
+    console.assert(equals(output, [6, 2, 14]))
     done()
   })
 })
-it('tests first number', function(done) {
-  const app = main()
-  app.take(1).subscribe(x => console.assert(x === 2), null, done)
+it('tests first number', function (done) {
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const app = main(constant, numbers, seconds)
+  app.take(1).subscribe(x => console.assert(x === 6), null, done)
 })
-it('tests second number', function(done) {
-  const app = main()
+it('tests second number', function (done) {
+  const constant = 2
+  const numbers = Rx.Observable.of(3, 1, 7)
+  const seconds = Rx.Observable.timer(0, 1000)
+  const app = main(constant, numbers, seconds)
   app
     .skip(1)
     .take(1)

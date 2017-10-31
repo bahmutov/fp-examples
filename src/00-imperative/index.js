@@ -7,17 +7,13 @@
 //  14
 'use strict'
 const Rx = require('rxjs/Rx')
-const { multiply, unary } = require('ramda')
+const { multiply } = require('ramda')
 function multiplyBy (constant, numbers) {
   const byConstant = multiply(constant)
   return numbers.map(byConstant)
 }
 function main (constant, numbers, control) {
-  const nums = Rx.Observable.zip(
-    numbers,
-    control,
-    (number, _) => number
-  )
+  const nums = Rx.Observable.zip(numbers, control, (number, _) => number)
   return multiplyBy(constant, nums)
 }
 module.exports = { multiplyBy, main }
