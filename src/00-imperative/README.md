@@ -1164,3 +1164,7 @@ it('tests second number', function(done) {
     .subscribe(x => console.assert(x === 2), null, done)
 })
 ```
+
+## Passing inputs
+
+Hardcoding the timer stream inside `main` seems a little limiting. Why should we always want our numbers multiplied a number once per second? Let us send it into `main` as a "control" stream. And while we are it, we can send the numbers stream and the constant - all inputs.
