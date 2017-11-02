@@ -1217,3 +1217,110 @@ done with keys
 Pretty sweet, isn't it? We completely isolated the pure logic of the program from its inputs and outputs by passing around Observables.
 
 ## Connection to the web world
+
+1. Observables are like arrays, but deal better with infinite streams of events. There are lots of operators that deal with time, collections of events and asynchronous operations. Think: type ahead search.
+2. Our model of moving the code that deals with side effects outside the `main` function helps no only in testing but in connecting any component to the database, to the DOM and to the server - all things that are just side-effects.
+
+A good framework for doing this [Cycle.js](https://cycle.js.org/). All inputs to the `main` are Observables from different non-pure objects, like DOM, HTTP, WebSockets. Our function `main` returns Observables to update DOM, send HTTP requests and WebSocket data frames.
+
+```js
+function main({DOM}) {
+  // map from DOM events to logical actions (intent)
+  const decrement$ = DOM
+    .select('.decrement').events('click').map(ev => -1)
+  const increment$ = DOM
+    .select('.increment').events('click').map(ev => +1)
+  // update internal data model
+  const action$ = Observable.merge(decrement$, increment$)
+  const count$ = action$.startWith(0).scan((x,y) => x+y)
+  // stream of virtual view events
+  const vtree$ = count$.map(count =>
+    div([
+      button('.decrement', 'Decrement'),
+      button('.increment', 'Increment'),
+      p('Counter: ' + count)
+    ])
+  )
+  // output DOM stream
+  return { DOM: vtree$ }
+}
+```
+
+You can see the flow in action at [https://glebbahmutov.com/draw-cycle/](https://glebbahmutov.com/draw-cycle/)
+
+The inputs and outputs to the `main` function are called *sources* and *sinks* respectively, because the events flow from sources to sinks. The outside "application" bootstrapping code creates the sources object, and gets the corresponding sinks. In Cycle.js land the code responsible for creating a source and corresponding sink (like DOM or HTTP) is called *a driver* - just like OS drivers are responsible for connecting OS to the actual hardware.
+
+Here is an example of an HTTP driver that gets a random user profile when the button is clicked. This example comes from [Cycle.js website](https://cycle.js.org/basic-examples.html#basic-examples-http-requests)
+
+```js
+function main({DOM}) {
+  const getRandomUser$ = DOM.select('.get-random').events('click')
+    .map(() => {
+      const randomNum = Math.round(Math.random() * 9) + 1;
+      return {
+        url: 'https://jsonplaceholder.typicode.com/users/' + String(randomNum),
+        category: 'users',
+        method: 'GET'
+      }
+    })
+  // more code
+  return {
+    HTTP: getRandomUser$
+  }
+}
+```
+So in order to make an outgoing HTTP request we just return a JSON object in the `HTTP` Observable. But how do we receive a result? We read it from the `HTTP` source Observable passed into the `main`. Note that we use `category: "users"` to separate different requests.
+
+```js
+function main({DOM, HTTP}) {
+  // same getRandomUser$ code as above
+  const user$ = HTTP.select('users')
+    .flatten()
+    .map(res => res.body)
+    .startWith(null)
+  // more code
+  return {
+    HTTP: getRandomUser$
+  }
+}
+```
+
+What do we once we get an event in `user$` stream? We map it to the virtual dom event and send to DOM stream!
+
+```js
+function ({DOM, HTTP}) {
+  // same getRandomUser$ code as above
+  // same user$ code as above
+  div('.users', [
+      button('.get-random', 'Get random user'),
+      user === null ? null : div('.user-details', [
+        h1('.user-name', user.name),
+        h4('.user-email', user.email),
+        a('.user-website', {attrs: {href: user.website}}, user.website)
+      ])
+    ])
+  )
+  return {
+    DOM: vdom$,
+    HTTP: getRandomUser$
+  }
+}
+```
+
+Finally, our boostrapping code has to create `DOM`, `HTTP` streams and connect sinks and sources.
+
+```js
+Cycle.run(main, {
+  DOM: makeDOMDriver('#app'),
+  HTTP: makeHTTPDriver()
+})
+```
+
+Interesting, and completely isolated from the actual browser DOM or from network.
+
+## Connecting components to other components
+
+Instead of custom template syntax to pass properties down to child DOM components, components can exchange Observables to pass properties, gaining a lot of power without any new syntax. See [Why use reactive streams for components?](https://glebbahmutov.com/blog/why-use-reactive-streams-for-components/) for examples.
+
+## Universal web applications
+
