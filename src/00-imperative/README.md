@@ -261,6 +261,24 @@ becomes a nightmare. Some of these interdependencies in the tests can be found b
 order of tests on every run, which test runner [rocha](https://github.com/bahmutov/rocha)
 does.
 
+We can reset our sinon spies after each test
+
+```js
+const sinon = require('sinon')
+beforeEach(() => {
+  sinon.spy(console, 'log')
+})
+afterEach(() => {
+  console.log.restore()
+})
+it('prints numbers', () => {
+  require('./index.js')
+  console.assert(console.log.calledWith(6), 'printed 6')
+  console.assert(console.log.calledWith(2), 'printed 2')
+  console.assert(console.log.calledWith(14), 'printed 14')
+})
+```
+
 But even more subtle is the global state pollution that happens when we use statement
 `require('./index.js')`. In Node environment, this command reads the source of the file
 `./index.js` and *evaluates it* using JavaScript engine. Thus it executes all the statements
@@ -440,9 +458,12 @@ function multiplyAndPrint (cb) {
 module.exports = multiplyAndPrint
 ```
 
-See how `multiplyAndPrint` suddenly became a *pure* function? It is not affecting any global
-state and always produces the same result: calling passed callback function `cb` 3 times
-with numbers 6, 2 and 14. In fact I like writing my code in this fashion, but surround it
+See how `multiplyAndPrint` function suddenly became a little cleaner? It is still affecting the global
+state by calling `cb` argument directly, so if `cb` is doing the side effect, then its caller is
+also doing the side effect.
+
+But still we made progress in my opinion - our code is a little bit more testable.
+I like writing my code in this fashion, but surround it
 with default "dirty" bits. For example if we load this file as a top level module, we
 probably want to print the numbers!
 ```js
@@ -489,9 +510,7 @@ Perfect, our tests are much simpler because we refactored our side effects and r
 
 ## The pure examples and return values
 
-Our function `multiplyAndPrint` is pure, even if calls a passed in impure callback function.
-It only operates on the inputs, so if `cb` is pure or note - that is unknown and beyond
-our function's control.
+Our function `multiplyAndPrint` is not pure yet, because it calls a passed in impure callback function.
 
 ```js
 function multiplyAndPrint (cb) {
@@ -503,7 +522,7 @@ function multiplyAndPrint (cb) {
 }
 ```
 
-Other pure functions usually return something, maybe depending on the arguments
+Pure functions usually return something, maybe depending on the arguments
 
 ```jsx
 // a function that always returns `true` value
@@ -1324,3 +1343,4 @@ Instead of custom template syntax to pass properties down to child DOM component
 
 ## Universal web applications
 
+Because our `main` logic is completely isolated from the outside world, we can render our application on the server or on the client - it is just a question of picking the right drivers to handle our events.
